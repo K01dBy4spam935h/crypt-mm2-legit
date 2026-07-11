@@ -2,7 +2,7 @@
 -- Replace BG_IMAGE_ID below with your Roblox decal asset ID
 -- Upload your image at roblox.com/develop > Decals, copy the ID
 
-local BG_IMAGE_ID = "rbxassetid://YOUR_IMAGE_ID_HERE" -- <-- paste yours here
+local BG_IMAGE_ID = "rbxassetid://10341849885" -- <-- paste yours here
 
 local Players       = game:GetService("Players")
 local TweenService  = game:GetService("TweenService")
