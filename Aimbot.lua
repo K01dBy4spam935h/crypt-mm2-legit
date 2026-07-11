@@ -94,19 +94,20 @@ end
 
 -- ─── Main Loop ────────────────────────────────────────────────────────────────
 
+-- replace the existing RunService.RenderStepped:Connect block with this:
+
 RunService.RenderStepped:Connect(function()
-    local fov     = _G.AimbotFOV or 180
+    local fov     = _G.AimbotFOV       or 180
     local smooth  = _G.AimbotSmoothing or 12
-    local enabled = _G.AimbotEnabled
-    local showFov = _G.ShowFOV
+    local enabled = _G.AimbotEnabled   or false
+    local showFov = _G.ShowFOV         or false
     local needRMB = _G.AimbotRightClick
 
     local center = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
 
-    -- FOV circle draw
-    fovCircle.Radius  = fov
+    fovCircle.Radius   = fov
     fovCircle.Position = center
-    fovCircle.Visible  = showFov and enabled
+    fovCircle.Visible  = (showFov == true) and (enabled == true)
 
     if not enabled then return end
     if needRMB and not UserInput:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then return end
@@ -114,27 +115,14 @@ RunService.RenderStepped:Connect(function()
     local target = getTarget()
     if not target then return end
 
-    local targetScreenPos = camera:WorldToViewportPoint(target.Position)
-    local targetVec = Vector2.new(targetScreenPos.X, targetScreenPos.Y)
-
-    -- Humanized smooth movement
-    local alpha   = math.clamp(1 / smooth, 0.01, 1)
-
-    -- We move the camera CFrame to aim — minimal, hard to detect
+    local alpha    = math.clamp(1 / smooth, 0.01, 1)
     local currentCF = camera.CFrame
     local targetCF  = CFrame.new(currentCF.Position, target.Position)
-
-    -- Decompose
     local cx, cy, cz = currentCF:ToOrientation()
-    local tx, ty, tz = targetCF:ToOrientation()
+    local tx, ty, _  = targetCF:ToOrientation()
 
-    local nx = smoothStep(cx, tx, alpha)
-    local ny = smoothStep(cy, ty, alpha)
+    local nx = cx + (tx - cx) * alpha + (math.random() - 0.5) * 0.004
+    local ny = cy + (ty - cy) * alpha + (math.random() - 0.5) * 0.004
 
-    -- Tiny random jitter to humanize (±0.002 rad)
-    nx = nx + (math.random() - 0.5) * 0.004
-    ny = ny + (math.random() - 0.5) * 0.004
-
-    camera.CFrame = CFrame.new(currentCF.Position)
-        * CFrame.fromOrientation(nx, ny, cz)
+    camera.CFrame = CFrame.new(currentCF.Position) * CFrame.fromOrientation(nx, ny, cz)
 end)
