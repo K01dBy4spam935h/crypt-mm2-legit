@@ -1,9 +1,9 @@
 -- Crypt-MM2-Legit | Loader
--- Execute this file in your executor to load everything.
 
 local repo = "https://raw.githubusercontent.com/K01dBy4spam935h/crypt-mm2-legit/main/"
 
 local files = {
+    "Config",       -- must be first
     "AntiDetect",
     "UI",
     "Aimbot",
