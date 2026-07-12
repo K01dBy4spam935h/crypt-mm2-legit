@@ -1,9 +1,8 @@
--- Crypt-MM2-Legit | Custom Crosshair
+-- Crypt-MM2-Legit | Crosshair — RGB + spinning
 
 local RunService = game:GetService("RunService")
 local camera     = workspace.CurrentCamera
 
--- 4 lines: top, bottom, left, right
 local lines = {}
 for i = 1, 4 do
     local l = Drawing.new("Line")
@@ -14,7 +13,28 @@ for i = 1, 4 do
     lines[i] = l
 end
 
-RunService.RenderStepped:Connect(function()
+local angle = 0
+local hue   = 0
+
+local function hsvToRGB(h, s, v)
+    local r, g, b
+    local i = math.floor(h * 6)
+    local f = h * 6 - i
+    local p = v * (1 - s)
+    local q = v * (1 - f * s)
+    local t = v * (1 - (1 - f) * s)
+    i = i % 6
+    if     i == 0 then r,g,b = v,t,p
+    elseif i == 1 then r,g,b = q,v,p
+    elseif i == 2 then r,g,b = p,v,t
+    elseif i == 3 then r,g,b = p,q,v
+    elseif i == 4 then r,g,b = t,p,v
+    elseif i == 5 then r,g,b = v,p,q
+    end
+    return Color3.new(r, g, b)
+end
+
+RunService.RenderStepped:Connect(function(dt)
     if not _G.CrosshairEnabled then
         for _, l in ipairs(lines) do l.Visible = false end
         return
@@ -25,28 +45,45 @@ RunService.RenderStepped:Connect(function()
     local size  = (_G.CrosshairSize  or 14) / 2
     local gap   = _G.CrosshairGap    or 4
     local thick = _G.CrosshairThick  or 1
+    local spin  = _G.CrosshairRGB    and (_G.CrosshairSpin or 5) or 0
 
-    -- top
-    lines[1].From      = Vector2.new(cx, cy - gap - size)
-    lines[1].To        = Vector2.new(cx, cy - gap)
-    lines[1].Thickness = thick
-    lines[1].Visible   = true
+    -- Advance angle and hue
+    angle = angle + spin * dt
+    hue   = (hue + dt * 0.3) % 1
 
-    -- bottom
-    lines[2].From      = Vector2.new(cx, cy + gap)
-    lines[2].To        = Vector2.new(cx, cy + gap + size)
-    lines[2].Thickness = thick
-    lines[2].Visible   = true
+    local color = _G.CrosshairRGB
+        and hsvToRGB(hue, 1, 1)
+        or  Color3.fromRGB(255, 255, 255)
 
-    -- left
-    lines[3].From      = Vector2.new(cx - gap - size, cy)
-    lines[3].To        = Vector2.new(cx - gap,        cy)
-    lines[3].Thickness = thick
-    lines[3].Visible   = true
+    local cos_a = math.cos(angle)
+    local sin_a = math.sin(angle)
 
-    -- right
-    lines[4].From      = Vector2.new(cx + gap,        cy)
-    lines[4].To        = Vector2.new(cx + gap + size, cy)
-    lines[4].Thickness = thick
-    lines[4].Visible   = true
+    -- Rotate 4 tip vectors around center
+    local tips = {
+        Vector2.new(0, -(gap + size)),    -- up
+        Vector2.new(0,  (gap + size)),    -- down
+        Vector2.new(-(gap + size), 0),   -- left
+        Vector2.new( (gap + size), 0),   -- right
+    }
+    local bases = {
+        Vector2.new(0, -gap),
+        Vector2.new(0,  gap),
+        Vector2.new(-gap, 0),
+        Vector2.new( gap, 0),
+    }
+
+    local function rot(v)
+        return Vector2.new(
+            v.X * cos_a - v.Y * sin_a + cx,
+            v.X * sin_a + v.Y * cos_a + cy
+        )
+    end
+
+    for i = 1, 4 do
+        lines[i].From      = rot(bases[i])
+        lines[i].To        = rot(tips[i])
+        lines[i].Color     = color
+        lines[i].Thickness = thick
+        lines[i].Visible   = true
+    end
 end)
