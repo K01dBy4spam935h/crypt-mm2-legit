@@ -1,25 +1,20 @@
 -- Crypt-MM2-Legit | Config
--- Put all your asset IDs and preferences here.
+-- Paste your Roblox decal asset IDs below (numbers only, no rbxassetid://)
 
 _G.Config = {
 
-    -- Main background image (shown behind the UI window)
-    -- Upload at roblox.com/develop > Decals, paste the NUMBER only
-    BackgroundDecal = "rbxassetid://10341849885",
+    -- HOW TO GET YOUR DECAL ID:
+    -- 1. Go to roblox.com > Create > Decals > Upload Image
+    -- 2. Wait for approval
+    -- 3. Click your decal, copy the NUMBER from the URL bar
+    --    e.g. roblox.com/catalog/12345678/... → use 12345678
+    -- 4. Paste below
 
-    -- Icon shown when UI is minimized (small square button)
-    MinimizeIconDecal = "rbxassetid://5649884823",
+    BackgroundDecal    = "rbxassetid://10039618753",
+    MinimizeIconDecal  = "rbxassetid://5649884823",
 
-    -- Keybind to toggle UI visibility (minimized <-> open)
-    ToggleKey = Enum.KeyCode.Insert,
-
-    -- UI starting position
+    ToggleKey   = Enum.KeyCode.Insert,
+    WindowSize  = UDim2.new(0, 520, 0, 400),
+    IconSize    = UDim2.new(0, 54, 0, 54),
     StartPosition = UDim2.new(0.5, -260, 0.5, -200),
-
-    -- Default window size
-    WindowSize = UDim2.new(0, 520, 0, 400),
-
-    -- Minimized icon size
-    IconSize = UDim2.new(0, 54, 0, 54),
-
 }
