@@ -3,20 +3,21 @@
 local repo = "https://raw.githubusercontent.com/K01dBy4spam935h/crypt-mm2-legit/main/"
 
 local files = {
-    "Config",       -- must be first
+    "Config",
     "AntiDetect",
     "UI",
     "Aimbot",
     "ESP",
     "Movement",
-    "Crosshair"
+    "Hitbox",
+    "Crosshair",
 }
 
 for _, module in ipairs(files) do
-    local success, err = pcall(function()
+    local ok, err = pcall(function()
         loadstring(game:HttpGet(repo .. module .. ".lua"))()
     end)
-    if not success then
-        warn("[Crypt] Failed to load " .. module .. ": " .. err)
+    if not ok then
+        warn("[Crypt] " .. module .. " failed: " .. tostring(err))
     end
 end
