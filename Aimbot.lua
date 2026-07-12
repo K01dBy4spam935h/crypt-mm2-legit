@@ -1,4 +1,4 @@
--- Crypt-MM2-Legit | Aimbot
+-- Crypt-MM2-Legit | Aimbot + Triggerbot
 
 local Players    = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -20,8 +20,6 @@ local function getRole(player)
     return "Innocent"
 end
 
--- ── Drawings ─────────────────────────────────────────────────────────────────
-
 local fovCircle        = Drawing.new("Circle")
 fovCircle.Thickness    = 1.2
 fovCircle.Color        = Color3.fromRGB(255, 255, 255)
@@ -29,36 +27,30 @@ fovCircle.Filled       = false
 fovCircle.Visible      = false
 fovCircle.Transparency = 1
 
-local targetTracer        = Drawing.new("Line")
-targetTracer.Thickness    = 1.5
-targetTracer.Color        = Color3.fromRGB(255, 60, 60)
-targetTracer.Visible      = false
-targetTracer.Transparency = 1
+local tgtLine        = Drawing.new("Line")
+tgtLine.Thickness    = 1.5
+tgtLine.Color        = Color3.fromRGB(255, 60, 60)
+tgtLine.Visible      = false
+tgtLine.Transparency = 1
 
--- ── Closest Target ───────────────────────────────────────────────────────────
+local currentTarget = nil
 
-local currentTarget = nil  -- exposed for other modules
-
-local function getTarget()
-    local fov    = _G.AimbotFOV or 250
+local function getTarget(fov)
     local center = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
     local best, bestDist = nil, fov
-
     local aimAll = (not _G.AimMurderer) and (not _G.AimSheriff)
 
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player == lp then continue end
-        local char = player.Character
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p == lp then continue end
+        local char = p.Character
         if not char then continue end
         local hum = char:FindFirstChildOfClass("Humanoid")
         if not hum or hum.Health <= 0 then continue end
 
-        local role = getRole(player)
+        local role = getRole(p)
         if not aimAll then
-            local wanted = false
-            if _G.AimMurderer and role == "Murderer" then wanted = true end
-            if _G.AimSheriff  and role == "Sheriff"  then wanted = true end
-            if not wanted then continue end
+            local ok = (_G.AimMurderer and role == "Murderer") or (_G.AimSheriff and role == "Sheriff")
+            if not ok then continue end
         end
 
         local head = char:FindFirstChild("Head") or char:FindFirstChild("HumanoidRootPart")
@@ -66,69 +58,105 @@ local function getTarget()
 
         local sp, onScreen = camera:WorldToViewportPoint(head.Position)
         if not onScreen then continue end
-
-        local dist = (Vector2.new(sp.X, sp.Y) - center).Magnitude
-        if dist < bestDist then
-            bestDist = dist
-            best     = head
-        end
+        local d = (Vector2.new(sp.X, sp.Y) - center).Magnitude
+        if d < bestDist then bestDist = d; best = head end
     end
-
     return best
 end
 
--- ── Main Loop ────────────────────────────────────────────────────────────────
+-- ── Triggerbot ────────────────────────────────────────────────────────────────
 
-RunService.RenderStepped:Connect(function()
-    local enabled = _G.AimbotEnabled    or false
-    local fov     = _G.AimbotFOV        or 250
-    local smooth  = _G.AimbotSmoothing  or 5
-    local needRMB = _G.AimbotRightClick or false
-    local showFov = _G.ShowFOV          or false
-    local showTgt = _G.TargetTracer     or false
+local triggercooldown = 0
 
-    local center = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
+local function doTrigger()
+    local char = lp.Character
+    if not char then return end
+    -- find equipped tool
+    local tool = char:FindFirstChildOfClass("Tool")
+    if not tool then return end
+    -- fire activation
+    pcall(function() tool:Activate() end)
+end
 
-    -- FOV circle
+-- ── Main Loop ─────────────────────────────────────────────────────────────────
+
+RunService.RenderStepped:Connect(function(dt)
+    local enabled  = _G.AimbotEnabled    or false
+    local fov      = _G.AimbotFOV        or 250
+    local smooth   = _G.AimbotSmoothing  or 2
+    local needRMB  = _G.AimbotRightClick or false
+    local showFov  = _G.ShowFOV          or false
+    local showTgt  = _G.TargetTracer     or false
+    local trigOn   = _G.TriggerEnabled   or false
+    local trigFOV  = _G.TriggerFOV       or 30
+
+    local center   = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
+
     fovCircle.Radius   = fov
     fovCircle.Position = center
     fovCircle.Visible  = showFov and enabled
+    tgtLine.Visible    = false
+    currentTarget      = nil
 
-    -- Clear target tracer by default
-    targetTracer.Visible = false
-    currentTarget = nil
+    if enabled then
+        if not needRMB or UserInput:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then
+            local target = getTarget(fov)
+            currentTarget = target
 
-    if not enabled then return end
-    if needRMB and not UserInput:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then return end
+            if target then
+                local sp, onScreen = camera:WorldToViewportPoint(target.Position)
+                if onScreen and showTgt then
+                    tgtLine.From    = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
+                    tgtLine.To      = Vector2.new(sp.X, sp.Y)
+                    tgtLine.Visible = true
+                end
 
-    local target = getTarget()
-    currentTarget = target
-    if not target then return end
+                -- SNAPPY aim: alpha very high, instant at smooth=1
+                local alpha = math.clamp(1 / math.max(smooth, 1), 0.08, 1)
+                local cf = camera.CFrame
+                local tcf = CFrame.lookAt(cf.Position, target.Position)
+                local cx, cy, cz = cf:ToOrientation()
+                local tx, ty, _  = tcf:ToOrientation()
 
-    -- Target tracer line (bottom-center → target screen pos)
-    if showTgt then
-        local sp, onScreen = camera:WorldToViewportPoint(target.Position)
-        if onScreen then
-            targetTracer.From    = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y)
-            targetTracer.To      = Vector2.new(sp.X, sp.Y)
-            targetTracer.Visible = true
+                local nx = cx + (tx - cx) * alpha + (math.random() - 0.5) * 0.0015
+                local ny = cy + (ty - cy) * alpha + (math.random() - 0.5) * 0.0015
+
+                camera.CFrame = CFrame.new(cf.Position) * CFrame.fromOrientation(nx, ny, cz)
+            end
         end
     end
 
-    -- Snap aim — high alpha = snappier
-    local alpha = math.clamp(1 / math.max(smooth, 1), 0.05, 1)
+    -- Triggerbot
+    if trigOn then
+        triggercooldown = triggercooldown - dt
+        if triggercooldown <= 0 then
+            local trigAll = (not _G.TriggerMurd) and (not _G.TriggerSheriff)
 
-    local cf       = camera.CFrame
-    local targetCF = CFrame.lookAt(cf.Position, target.Position)
-
-    local cx, cy, cz = cf:ToOrientation()
-    local tx, ty, _  = targetCF:ToOrientation()
-
-    -- snappy lerp — with smooth = 1, alpha = 1.0 = instant lock
-    local nx = cx + (tx - cx) * alpha + (math.random() - 0.5) * 0.002
-    local ny = cy + (ty - cy) * alpha + (math.random() - 0.5) * 0.002
-
-    camera.CFrame = CFrame.new(cf.Position) * CFrame.fromOrientation(nx, ny, cz)
+            -- check if any valid target is within trigger FOV
+            for _, p in ipairs(Players:GetPlayers()) do
+                if p == lp then continue end
+                local char = p.Character
+                if not char then continue end
+                local hum = char:FindFirstChildOfClass("Humanoid")
+                if not hum or hum.Health <= 0 then continue end
+                local role = getRole(p)
+                if not trigAll then
+                    local ok = (_G.TriggerMurd and role == "Murderer") or (_G.TriggerSheriff and role == "Sheriff")
+                    if not ok then continue end
+                end
+                local head = char:FindFirstChild("Head") or char:FindFirstChild("HumanoidRootPart")
+                if not head then continue end
+                local sp, onScreen = camera:WorldToViewportPoint(head.Position)
+                if not onScreen then continue end
+                local d = (Vector2.new(sp.X, sp.Y) - center).Magnitude
+                if d <= trigFOV then
+                    doTrigger()
+                    triggercooldown = 0.18 + math.random() * 0.08  -- humanized cooldown
+                    break
+                end
+            end
+        end
+    end
 end)
 
 _G.CryptAimbotTarget = function() return currentTarget end
