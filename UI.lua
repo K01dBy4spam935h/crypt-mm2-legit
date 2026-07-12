@@ -41,12 +41,14 @@ mainCorner.CornerRadius = UDim.new(0, 14)
 mainCorner.Parent = main
 
 -- Background image — fully visible, crops to fill window
+-- replace the bgImg ImageLabel creation with this:
 local bgImg = Instance.new("ImageLabel")
 bgImg.Image              = BG_IMAGE
 bgImg.Size               = UDim2.new(1, 0, 1, 0)
+bgImg.Position           = UDim2.new(0, 0, 0, 0)
 bgImg.BackgroundTransparency = 1
 bgImg.ImageTransparency  = 0
-bgImg.ScaleType          = Enum.ScaleType.Crop
+bgImg.ScaleType          = Enum.ScaleType.Stretch  -- stretch fits any image perfectly, no cropping
 bgImg.ZIndex             = 1
 bgImg.Parent             = main
 
@@ -54,7 +56,7 @@ bgImg.Parent             = main
 local wash = Instance.new("Frame")
 wash.Size                   = UDim2.new(1, 0, 1, 0)
 wash.BackgroundColor3       = Color3.fromRGB(0, 0, 0)
-wash.BackgroundTransparency = 0.7   -- lower = darker wash; raise to show more image
+wash.BackgroundTransparency = 0.6   -- lower = darker wash; raise to show more image
 wash.BorderSizePixel        = 0
 wash.ZIndex                 = 2
 wash.Parent                 = main
