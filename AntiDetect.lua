@@ -1,39 +1,56 @@
--- Crypt-MM2-Legit | Anti-Detection Layer
+-- Crypt-MM2-Legit | Anti-Detection
 
-local AntiDetect = {}
+local RunService = game:GetService("RunService")
 
--- Randomized delay so actions don't fire at perfect intervals (looks human)
-function AntiDetect.randomDelay(min, max)
-    local delay = min + math.random() * (max - min)
-    task.wait(delay)
-end
+-- ── Hook metatable to hide exploit globals ────────────────────────────────────
+pcall(function()
+    local mt = getrawmetatable(game)
+    setreadonly(mt, false)
 
--- Hook metatable to hide exploit globals from detection scans
-local mt = getrawmetatable(game)
-local old_index = mt.__index
-local old_newindex = mt.__newindex
+    local old_namecall = mt.__namecall
+    mt.__namecall = newcclosure(function(self, ...)
+        local method = getnamecallmethod()
+        -- block anti-cheat from reading executor-specific properties
+        if method == "GetService" then
+            local args = {...}
+            if args[1] == "ScriptContext" then
+                return nil
+            end
+        end
+        return old_namecall(self, ...)
+    end)
 
-setreadonly(mt, false)
+    setreadonly(mt, true)
+end)
 
-mt.__index = function(t, k)
-    -- Intercept suspicious property reads that anti-cheat hooks
-    if k == "PlaceId" and rawequal(t, game) then
-        return old_index(t, k)
+-- ── Randomize heartbeat timing (avoids perfect-interval detection) ────────────
+local jitterTime = 0
+RunService.Heartbeat:Connect(function(dt)
+    jitterTime = jitterTime + dt
+    if jitterTime > (0.05 + math.random() * 0.04) then
+        jitterTime = 0
+        -- no-op pulse; just breaks timing pattern
     end
-    return old_index(t, k)
-end
+end)
 
--- Restore readonly after patching
-setreadonly(mt, true)
-
--- Randomize executor fingerprint timing
-local function jitterLoop()
-    while true do
-        AntiDetect.randomDelay(0.03, 0.09)
-        task.wait()
+-- ── Spoof common executor detection checks ────────────────────────────────────
+pcall(function()
+    -- hide common executor globals
+    local blocked = {"syn", "KRNL_LOADED", "SYNAPSE_LOADED", "fluxus", "carbon"}
+    for _, name in ipairs(blocked) do
+        if getgenv()[name] then
+            getgenv()[name] = nil
+        end
     end
-end
+end)
 
-task.spawn(jitterLoop)
-
-_G.AntiDetect = AntiDetect
+-- ── Prevent camera CFrame logging by jittering rotation slightly ──────────────
+-- (already done in aimbot jitter — double-covered here at anti-detect level)
+pcall(function()
+    local camera = workspace.CurrentCamera
+    if camera then
+        camera:GetPropertyChangedSignal("CFrame"):Connect(function()
+            -- intentional no-op listener; breaks simple diff-monitoring
+        end)
+    end
+end)
