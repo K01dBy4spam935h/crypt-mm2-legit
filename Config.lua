@@ -10,8 +10,8 @@
 -- OR: The script will auto-resolve it for you via InsertService
 
 _G.Config = {
-    BackgroundDecal    = "rbxassetid://1476059650",
-    MinimizeIconDecal  = "rbxassetid://668752955",
+    BackgroundDecal    = "rbxassetid://6311243701",
+    MinimizeIconDecal  = "rbxassetid://10815904377",
 
     Icon_Main          = "rbxassetid://13060262582",
     Icon_Aimbot        = "rbxassetid://108977717302566",
