@@ -1,24 +1,10 @@
--- Crypt-MM2-Legit | Hitbox Expander + Silent Aim
+-- Crypt-MM2-Legit | Hitbox Expander (Murderer tab)
 
 local Players    = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local lp         = Players.LocalPlayer
 
-local originalSizes = {}
-
-local function getRole(player)
-    local char = player.Character
-    local bp   = player:FindFirstChild("Backpack")
-    if char then
-        if char:FindFirstChild("Knife") then return "Murderer" end
-        if char:FindFirstChild("Gun")   then return "Sheriff"  end
-    end
-    if bp then
-        if bp:FindFirstChild("Knife") then return "Murderer" end
-        if bp:FindFirstChild("Gun")   then return "Sheriff"  end
-    end
-    return "Innocent"
-end
+local origSizes = {}
 
 RunService.Heartbeat:Connect(function()
     for _, player in ipairs(Players:GetPlayers()) do
@@ -28,39 +14,23 @@ RunService.Heartbeat:Connect(function()
         local root = char:FindFirstChild("HumanoidRootPart")
         if not root then continue end
 
-        local role = getRole(player)
-
-        -- Silent aim: expand murderer and sheriff hugely (through walls hitbox)
-        local silentTarget = _G.SilentAim and (role == "Murderer" or role == "Sheriff")
-
-        if _G.HitboxEnabled or silentTarget then
-            if not originalSizes[player] then
-                originalSizes[player] = root.Size
+        if _G.HitboxEnabled then
+            if not origSizes[player] then
+                origSizes[player] = root.Size
             end
-
-            local sz = silentTarget
-                and (_G.SilentAimSize or 40)   -- massive for silent aim
-                or  (_G.HitboxSize    or 6)     -- normal hitbox expand
-
-            root.Size = Vector3.new(sz, sz, sz)
-
-            -- Hide visual expansion from this client
-            root.LocalTransparencyModifier = 1
-
-            -- Allow walking through expanded hitbox (CanCollide off client-side)
-            root.CanCollide = false
+            local sz = _G.HitboxSize or 6
+            root.Size       = Vector3.new(sz, sz, sz)
+            root.CanCollide = false                         -- walk through expanded hitbox
+            root.LocalTransparencyModifier = 1             -- hide visual expansion
         else
-            -- Restore
-            if originalSizes[player] then
-                root.Size                      = originalSizes[player]
-                originalSizes[player]          = nil
-                root.LocalTransparencyModifier = 0
+            if origSizes[player] then
+                root.Size                      = origSizes[player]
+                origSizes[player]              = nil
                 root.CanCollide                = true
+                root.LocalTransparencyModifier = 0
             end
         end
     end
 end)
 
-Players.PlayerRemoving:Connect(function(p)
-    originalSizes[p] = nil
-end)
+Players.PlayerRemoving:Connect(function(p) origSizes[p] = nil end)
