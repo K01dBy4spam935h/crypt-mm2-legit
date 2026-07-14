@@ -9,36 +9,26 @@ local files = {
     "Aimbot",
     "ESP",
     "Movement",
-    "Hitbox",
+    "Features",
     "Crosshair",
 }
 
-local loaded   = {}
-local failed   = {}
+local loaded, failed = {}, {}
 
 for _, module in ipairs(files) do
     local ok, err = pcall(function()
         loadstring(game:HttpGet(repo .. module .. ".lua"))()
     end)
-    if ok then
-        table.insert(loaded, module)
-    else
-        table.insert(failed, module)
-        warn("[Crypt] FAILED — " .. module .. ": " .. tostring(err))
-    end
+    if ok then table.insert(loaded, module)
+    else table.insert(failed, module); warn("[Crypt] FAILED — "..module..": "..tostring(err)) end
 end
 
--- Wait for notification system to be ready
-task.wait(1.5)
+task.wait(1.8)  -- wait for UI and _G.Notify to be ready
 
 if #failed == 0 then
-    if _G.Notify then
-        _G.Notify("Crypt MM2 loaded — all modules OK", "success")
-    end
-    print("[Crypt] All modules loaded successfully: " .. table.concat(loaded, ", "))
+    print("[Crypt] All modules loaded: " .. table.concat(loaded, ", "))
+    if _G.Notify then _G.Notify("Crypt MM2 ready — all modules loaded", "success") end
 else
-    if _G.Notify then
-        _G.Notify("Some modules failed: " .. table.concat(failed, ", "), "error")
-    end
-    warn("[Crypt] Failed modules: " .. table.concat(failed, ", "))
+    warn("[Crypt] Failed: " .. table.concat(failed, ", "))
+    if _G.Notify then _G.Notify("Failed: "..table.concat(failed,", "), "error") end
 end
