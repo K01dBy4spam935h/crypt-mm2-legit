@@ -61,3 +61,66 @@ RunService.RenderStepped:Connect(function(dt)
         lines[i].Color=color; lines[i].Thickness=thick; lines[i].Visible=true
     end
 end)
+
+-- Round Timer — scans workspace for MM2's countdown value
+-- MM2 stores round time as a NumberValue or IntValue in workspace
+
+local timerLabel = Drawing.new("Text")
+timerLabel.Size        = 18
+timerLabel.Font        = Drawing.Fonts.Plex
+timerLabel.Center      = true
+timerLabel.Outline     = true
+timerLabel.Color       = Color3.fromRGB(255, 255, 255)
+timerLabel.Visible     = false
+timerLabel.Transparency = 1
+
+local function findRoundTimer()
+    -- MM2 commonly uses a NumberValue named "GameTime", "RoundTime", or "Time"
+    for _, name in ipairs({"GameTime","RoundTime","Time","Timer","CountDown","Countdown"}) do
+        local v = workspace:FindFirstChild(name)
+              or workspace:FindFirstChildOfClass("Folder") and workspace:FindFirstChild("Folder"):FindFirstChild(name)
+        if v and (v:IsA("NumberValue") or v:IsA("IntValue")) then
+            return v
+        end
+    end
+    -- Deeper search
+    for _, obj in ipairs(workspace:GetChildren()) do
+        if obj:IsA("NumberValue") or obj:IsA("IntValue") then
+            local n = obj.Name:lower()
+            if n:find("time") or n:find("timer") or n:find("round") then
+                return obj
+            end
+        end
+        -- Check one level deep
+        for _, child in ipairs(obj:GetChildren()) do
+            if child:IsA("NumberValue") or child:IsA("IntValue") then
+                local n = child.Name:lower()
+                if n:find("time") or n:find("timer") or n:find("count") then
+                    return child
+                end
+            end
+        end
+    end
+    return nil
+end
+
+local camera = workspace.CurrentCamera
+
+game:GetService("RunService").RenderStepped:Connect(function()
+    if not _G.ShowRoundTimer then timerLabel.Visible=false; return end
+
+    local timerVal = findRoundTimer()
+    if timerVal then
+        local secs  = math.floor(timerVal.Value)
+        local mins  = math.floor(secs / 60)
+        local rem   = secs % 60
+        timerLabel.Text     = string.format("⏱  %d:%02d", mins, rem)
+        timerLabel.Position = Vector2.new(camera.ViewportSize.X / 2, 20)
+        timerLabel.Color    = secs <= 30
+            and Color3.fromRGB(255, 80, 80)
+            or  Color3.fromRGB(255, 255, 255)
+        timerLabel.Visible  = true
+    else
+        timerLabel.Visible = false
+    end
+end)
