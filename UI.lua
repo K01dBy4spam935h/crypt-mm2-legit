@@ -582,3 +582,44 @@ lbl(cS,"Noclip auto-on during farm",4)
 _G.CoinFarm=false;_G.CoinAntiMurd=true;_G.CoinSafetyRadius=15
 
 local hint=Instance.new("TextLabel"); hint.Text="Right Shift — toggle"; hint.Font=Enum.Font.Gotham; hint.TextSize=10; hint.TextColor3=Color3.fromRGB(70,70,80); hint.BackgroundTransparency=1; hint.Size=UDim2.new(1,0,0,14); hint.Position=UDim2.new(0,0,1,-16); hint.TextXAlignment=Enum.TextXAlignment.Center; hint.ZIndex=6; hint.Parent=main
+
+local settingsPage = makeTab("Settings", "rbxassetid://0")
+
+-- SETTINGS TAB ---------------------------------------------------------
+
+-- Keybind changer
+local kbS = sec(settingsPage, "Keybind", 1)
+local kbLabel = lbl(kbS, "Toggle key: Right Control", 1)
+local kbRow = Instance.new("Frame"); kbRow.Size=UDim2.new(1,0,0,32); kbRow.BackgroundTransparency=1; kbRow.LayoutOrder=2; kbRow.ZIndex=6; kbRow.Parent=kbS
+
+local kbBtn = Instance.new("TextButton"); kbBtn.Size=UDim2.new(1,0,0,28); kbBtn.BackgroundColor3=Color3.fromRGB(255,255,255); kbBtn.BackgroundTransparency=0.85; kbBtn.BorderSizePixel=0; kbBtn.Font=Enum.Font.GothamBold; kbBtn.TextSize=12; kbBtn.TextColor3=Color3.fromRGB(255,255,255); kbBtn.Text="Click to rebind"; kbBtn.ZIndex=7; kbBtn.Parent=kbRow
+local kbBtnC = Instance.new("UICorner"); kbBtnC.CornerRadius=UDim.new(0,6); kbBtnC.Parent=kbBtn
+
+local bindingNow = false
+kbBtn.MouseButton1Click:Connect(function()
+    if bindingNow then return end
+    bindingNow       = true
+    kbBtn.Text       = "▶ Press any key..."
+    kbBtn.TextColor3 = Color3.fromRGB(255, 220, 50)
+end)
+
+UserInput.InputBegan:Connect(function(input, gp)
+    if not bindingNow then return end
+    if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
+    bindingNow             = false
+    _G.ToggleKeyCode       = input.KeyCode
+    kbBtn.Text             = input.KeyCode.Name
+    kbBtn.TextColor3       = Color3.fromRGB(60, 220, 100)
+    kbLabel.Text           = "Toggle key: " .. input.KeyCode.Name
+    if _G.Notify then _G.Notify("Keybind set to " .. input.KeyCode.Name, "success") end
+end)
+
+-- Apply dynamic keybind in the toggle handler (override the static one)
+-- Replace the static UserInput.InputBegan toggle connection with this:
+UserInput.InputBegan:Connect(function(input, gp)
+    if gp or bindingNow then return end
+    local key = _G.ToggleKeyCode or TOGGLE_KEY
+    if input.KeyCode == key then
+        if _G._CryptMinimized then restore() else minimize() end
+    end
+end)
