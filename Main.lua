@@ -19,16 +19,21 @@ for _, module in ipairs(files) do
     local ok, err = pcall(function()
         loadstring(game:HttpGet(repo .. module .. ".lua"))()
     end)
-    if ok then table.insert(loaded, module)
-    else table.insert(failed, module); warn("[Crypt] FAILED — "..module..": "..tostring(err)) end
+    if ok then
+        table.insert(loaded, module)
+        print("[Crypt] ✓ " .. module)
+    else
+        table.insert(failed, module)
+        warn("[Crypt] ✕ " .. module .. ": " .. tostring(err))
+    end
 end
 
-task.wait(1.8)  -- wait for UI and _G.Notify to be ready
+task.wait(2)
 
 if #failed == 0 then
-    print("[Crypt] All modules loaded: " .. table.concat(loaded, ", "))
-    if _G.Notify then _G.Notify("Crypt MM2 ready — all modules loaded", "success") end
+    if _G.Notify then _G.Notify("Crypt MM2 — all modules loaded", "success") end
 else
-    warn("[Crypt] Failed: " .. table.concat(failed, ", "))
-    if _G.Notify then _G.Notify("Failed: "..table.concat(failed,", "), "error") end
+    if _G.Notify then
+        _G.Notify("Failed: " .. table.concat(failed, ", "), "error")
+    end
 end
