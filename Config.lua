@@ -3,16 +3,16 @@
 -- Upload your PNG there, copy the NUMBER from the URL — use rbxassetid://NUMBER
 
 _G.Config = {
-    BackgroundDecal    = "rbxassetid://6311243701",   -- replace 0 with your Image ID
-    MinimizeIconDecal  = "rbxassetid://5649884823",   -- replace 0 with your Image ID
+    BackgroundDecal    = "rbxassetid://7255938910",   -- replace 0 with your Image ID
+    MinimizeIconDecal  = "rbxassetid://10716387829",   -- replace 0 with your Image ID
 
     Icon_Main          = "rbxassetid://13060262582",
-    Icon_Aimbot        = "rbxassetid://108977717302566",
+    Icon_Aimbot        = "rbxassetid://11738671951",
     Icon_Visuals       = "rbxassetid://13321848342",
     Icon_LocalPlayer   = "rbxassetid://124871982298256",
     Icon_Murderer      = "rbxassetid://6187718258",
     Icon_Sheriff       = "rbxassetid://15571371474",
-    Icon_Farm          = "rbxassetid://111098288810374",
+    Icon_Farm          = "rbxassetid://3609651069",
     Icon_Teleport      = "rbxassetid://6723742959",
     Icon_Settings      = "rbxassetid://11932591121",
 
