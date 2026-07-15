@@ -48,30 +48,23 @@ local executorName = detectExecutor()
 
 local function loadImage(label, rawId)
     if not rawId then return end
-    local numId = tostring(rawId):match("(%d+)")
-    if not numId or numId == "0" then return end
+    local cleanId = tostring(rawId):match("%d+")
+    if not cleanId or cleanId == "0" then return end
 
-    task.spawn(function()
-        -- Direct attempt first
-        label.Image = "rbxassetid://" .. numId
-        ContentProvider:PreloadAsync({label})
-        task.wait(2.5)
-        if label.IsLoaded then return end
+    -- rbxthumb format — works reliably from executor context
+    label.Image = "rbxthumb://type=Asset&id=" .. cleanId .. "&w=420&h=420"
 
-        -- InsertService fallback for Decal IDs
-        local ok, asset = pcall(function()
-            return InsertService:LoadAsset(tonumber(numId))
-        end)
-        if ok and asset then
-            for _, desc in ipairs(asset:GetDescendants()) do
-                if desc:IsA("Decal") and desc.Texture ~= "" then
-                    label.Image = desc.Texture
-                    ContentProvider:PreloadAsync({label})
-                    asset:Destroy()
-                    return
-                end
-            end
-            asset:Destroy()
+    -- Listen for load confirmation
+    label:GetPropertyChangedSignal("IsLoaded"):Connect(function()
+        if label.IsLoaded then
+            print("[Crypt] Image loaded: " .. cleanId)
+        end
+    end)
+
+    -- Fallback: try direct rbxassetid after 3s if thumb didn't load
+    task.delay(3, function()
+        if not label.IsLoaded then
+            label.Image = "rbxassetid://" .. cleanId
         end
     end)
 end
@@ -438,6 +431,13 @@ sld(xhS,"Size",      4,30,14,function(v) _G.CrosshairSize=v  end,4)
 sld(xhS,"Gap",       0,12,4, function(v) _G.CrosshairGap=v   end,5)
 sld(xhS,"Thickness", 1,4, 1, function(v) _G.CrosshairThick=v end,6)
 sld(xhS,"Spin Speed",1,20,5, function(v) _G.CrosshairSpin=v  end,7)
+
+local rtS = sec(visPage, "Round Info", 3)
+tog(rtS, "Show Round Timer", false, function(v) _G.ShowRoundTimer = v end, 1)
+tog(rtS, "Gun Drop Notifier", false, function(v) _G.GunESP = v end, 2)  -- already in ESP but toggleable here
+_G.ShowRoundTimer = false
+
+-- Round timer Drawing object (add after widget builders section)
 
 _G.BoxESP=false;_G.ChamsESP=false;_G.NameESP=false;_G.DistanceESP=false;_G.Tracers=false;_G.GunESP=false
 _G.CrosshairEnabled=false;_G.CrosshairRGB=false;_G.CrosshairRedOnPlayer=true
