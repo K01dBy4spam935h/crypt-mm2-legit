@@ -198,28 +198,118 @@ end)
 -- ── Notification System ───────────────────────────────────────────────────────
 
 local notifContainer = Instance.new("Frame")
-notifContainer.Size=UDim2.new(0,300,0,0); notifContainer.Position=UDim2.new(0.5,-150,0,14); notifContainer.BackgroundTransparency=1; notifContainer.ZIndex=200; notifContainer.AutomaticSize=Enum.AutomaticSize.Y; notifContainer.Parent=gui
+notifContainer.Size                   = UDim2.new(0, 320, 1, 0)
+notifContainer.Position               = UDim2.new(1, -330, 0, 0)  -- top RIGHT
+notifContainer.BackgroundTransparency = 1
+notifContainer.ZIndex                 = 200
+notifContainer.AutomaticSize          = Enum.AutomaticSize.None
+notifContainer.Parent                 = gui
 
-local notifLayout=Instance.new("UIListLayout"); notifLayout.Padding=UDim.new(0,6); notifLayout.HorizontalAlignment=Enum.HorizontalAlignment.Center; notifLayout.Parent=notifContainer
+local notifLayout = Instance.new("UIListLayout")
+notifLayout.VerticalAlignment = Enum.VerticalAlignment.Top
+notifLayout.Padding           = UDim.new(0, 8)
+notifLayout.Parent            = notifContainer
 
-local notifN=0
-local typeCols={success=Color3.fromRGB(50,200,80),error=Color3.fromRGB(220,55,55),info=Color3.fromRGB(100,170,255),warn=Color3.fromRGB(230,160,30)}
-local typeIcons={success="✓",error="✕",info="ℹ",warn="⚠"}
+local notifPad = Instance.new("UIPadding")
+notifPad.PaddingTop   = UDim.new(0, 14)
+notifPad.PaddingRight = UDim.new(0, 10)
+notifPad.Parent       = notifContainer
+
+local notifN = 0
 
 _G.Notify = function(msg, ntype)
-    ntype=ntype or "info"
-    local col=typeCols[ntype] or typeCols.info; local icon=typeIcons[ntype] or "ℹ"
-    notifN=notifN+1
-    local card=Instance.new("Frame"); card.Size=UDim2.new(1,0,0,48); card.BackgroundColor3=Color3.fromRGB(10,10,16); card.BackgroundTransparency=0.05; card.BorderSizePixel=0; card.LayoutOrder=notifN; card.ZIndex=201; card.Parent=notifContainer
-    local cc=Instance.new("UICorner"); cc.CornerRadius=UDim.new(0,10); cc.Parent=card
-    local cs=Instance.new("UIStroke"); cs.Color=col; cs.Thickness=2; cs.Transparency=0.15; cs.Parent=card
-    local bar=Instance.new("Frame"); bar.Size=UDim2.new(0,4,1,0); bar.BackgroundColor3=col; bar.BorderSizePixel=0; bar.ZIndex=202; bar.Parent=card
-    local bc=Instance.new("UICorner"); bc.CornerRadius=UDim.new(0,4); bc.Parent=bar
-    local ico=Instance.new("TextLabel"); ico.Text=icon; ico.Font=Enum.Font.GothamBold; ico.TextSize=16; ico.TextColor3=col; ico.BackgroundTransparency=1; ico.Size=UDim2.new(0,24,1,0); ico.Position=UDim2.new(0,10,0,0); ico.TextXAlignment=Enum.TextXAlignment.Center; ico.ZIndex=202; ico.Parent=card
-    local lbl=Instance.new("TextLabel"); lbl.Text=msg; lbl.Font=Enum.Font.Gotham; lbl.TextSize=12; lbl.TextColor3=Color3.fromRGB(235,235,235); lbl.BackgroundTransparency=1; lbl.Size=UDim2.new(1,-40,1,0); lbl.Position=UDim2.new(0,36,0,0); lbl.TextXAlignment=Enum.TextXAlignment.Left; lbl.TextWrapped=true; lbl.ZIndex=202; lbl.Parent=card
-    card.Position=UDim2.new(0,0,0,-60)
-    TweenService:Create(card,TweenInfo.new(0.22,Enum.EasingStyle.Back,Enum.EasingDirection.Out),{Position=UDim2.new(0,0,0,0)}):Play()
-    task.delay(3.2,function() TweenService:Create(card,TweenInfo.new(0.25,Enum.EasingStyle.Quad),{BackgroundTransparency=1,Position=UDim2.new(0,0,0,-60)}):Play(); task.wait(0.3); card:Destroy() end)
+    ntype = ntype or "info"
+    local barColors = {
+        success = Color3.fromRGB(80, 200, 100),
+        error   = Color3.fromRGB(220, 70, 70),
+        info    = Color3.fromRGB(130, 180, 255),
+        warn    = Color3.fromRGB(240, 170, 50),
+    }
+    local barCol = barColors[ntype] or barColors.info
+    notifN = notifN + 1
+
+    -- Card
+    local card = Instance.new("Frame")
+    card.Size                   = UDim2.new(1, 0, 0, 56)
+    card.BackgroundColor3       = Color3.fromRGB(22, 22, 26)
+    card.BackgroundTransparency = 0
+    card.BorderSizePixel        = 0
+    card.LayoutOrder            = notifN
+    card.ZIndex                 = 201
+    card.ClipsDescendants       = true
+    card.Parent                 = notifContainer
+
+    local cardC = Instance.new("UICorner"); cardC.CornerRadius = UDim.new(0,10); cardC.Parent = card
+    local cardS = Instance.new("UIStroke"); cardS.Color = Color3.fromRGB(60,60,66); cardS.Thickness = 1; cardS.Parent = card
+
+    -- Left bar
+    local bar = Instance.new("Frame"); bar.Size=UDim2.new(0,4,1,0); bar.BackgroundColor3=barCol; bar.BorderSizePixel=0; bar.ZIndex=202; bar.Parent=card
+    local barC = Instance.new("UICorner"); barC.CornerRadius=UDim.new(0,4); barC.Parent=bar
+
+    -- Message
+    local msgL = Instance.new("TextLabel")
+    msgL.Text               = msg
+    msgL.Font               = Enum.Font.GothamSemibold
+    msgL.TextSize           = 13
+    msgL.TextColor3         = Color3.fromRGB(230, 230, 235)
+    msgL.BackgroundTransparency = 1
+    msgL.Size               = UDim2.new(1,-14,0,20)
+    msgL.Position           = UDim2.new(0,10,0,8)
+    msgL.TextXAlignment     = Enum.TextXAlignment.Left
+    msgL.TextWrapped        = true
+    msgL.ZIndex             = 202
+    msgL.Parent             = card
+
+    -- Type label
+    local typeL = Instance.new("TextLabel")
+    typeL.Text              = ntype:upper()
+    typeL.Font              = Enum.Font.GothamBold
+    typeL.TextSize          = 10
+    typeL.TextColor3        = barCol
+    typeL.BackgroundTransparency = 1
+    typeL.Size              = UDim2.new(1,-14,0,14)
+    typeL.Position          = UDim2.new(0,10,0,29)
+    typeL.TextXAlignment    = Enum.TextXAlignment.Left
+    typeL.ZIndex            = 202
+    typeL.Parent            = card
+
+    -- Cooldown bar (shrinks over 3.2s)
+    local coolBg = Instance.new("Frame")
+    coolBg.Size             = UDim2.new(1,-8,0,2)
+    coolBg.Position         = UDim2.new(0,4,1,-3)
+    coolBg.BackgroundColor3 = Color3.fromRGB(50,50,55)
+    coolBg.BorderSizePixel  = 0
+    coolBg.ZIndex           = 202
+    coolBg.Parent           = card
+    local coolBgC = Instance.new("UICorner"); coolBgC.CornerRadius=UDim.new(1,0); coolBgC.Parent=coolBg
+
+    local coolFill = Instance.new("Frame")
+    coolFill.Size             = UDim2.new(1,0,1,0)
+    coolFill.BackgroundColor3 = barCol
+    coolFill.BorderSizePixel  = 0
+    coolFill.ZIndex           = 203
+    coolFill.Parent           = coolBg
+    local coolFC = Instance.new("UICorner"); coolFC.CornerRadius=UDim.new(1,0); coolFC.Parent=coolFill
+
+    -- Slide in from right
+    card.Position = UDim2.new(1,10,0,0)
+    TweenService:Create(card, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+        Position = UDim2.new(0, 0, 0, 0)
+    }):Play()
+
+    -- Cooldown bar shrinks
+    TweenService:Create(coolFill, TweenInfo.new(3.2, Enum.EasingStyle.Linear), {
+        Size = UDim2.new(0, 0, 1, 0)
+    }):Play()
+
+    task.delay(3.2, function()
+        TweenService:Create(card, TweenInfo.new(0.2, Enum.EasingStyle.Quart), {
+            Position = UDim2.new(1, 10, 0, 0),
+            BackgroundTransparency = 1
+        }):Play()
+        task.wait(0.25)
+        card:Destroy()
+    end)
 end
 
 -- ── Widget Builders ───────────────────────────────────────────────────────────
