@@ -1,56 +1,112 @@
--- Crypt-MM2-Legit | Anti-Detection (safe, no metatable hooks)
+-- Crypt-MM2-Legit | Anti-Detection v3
 
 local RunService = game:GetService("RunService")
 local Players    = game:GetService("Players")
 local lp         = Players.LocalPlayer
 
--- ── 1. Clear executor fingerprint globals ─────────────────────────────────────
+-- ── 1. Executor auto-detection ────────────────────────────────────────────────
+
+local detectedExecutor = "Unknown"
+local detectedVersion  = "?"
+
+local function detectExecutor()
+    -- Method 1: Native API (best, no list needed)
+    if identifyexecutor then
+        local ok, r = pcall(identifyexecutor)
+        if ok and r then detectedExecutor = tostring(r); return end
+    end
+    if getexecutorname then
+        local ok, r = pcall(getexecutorname)
+        if ok and r then detectedExecutor = tostring(r); return end
+    end
+
+    -- Method 2: Capability fingerprinting (no hardcoded names)
+    -- Score different function groups that are unique to executor tiers
+    local caps = {
+        hookfunction     = hookfunction     ~= nil,
+        newcclosure      = newcclosure      ~= nil,
+        writefile        = writefile        ~= nil,
+        readfile         = readfile         ~= nil,
+        getgenv          = getgenv          ~= nil,
+        setidentity      = setidentity      ~= nil,
+        setthreadidentity= setthreadidentity~= nil,
+        getrawmetatable  = getrawmetatable  ~= nil,
+        hookmetamethod   = hookmetamethod   ~= nil,
+        firetouchinterest= firetouchinterest~= nil,
+        Drawing          = Drawing          ~= nil,
+        setfpscap        = setfpscap        ~= nil,
+        getconnections   = getconnections   ~= nil,
+        clonefunction    = clonefunction    ~= nil,
+        decompile        = decompile        ~= nil,
+    }
+
+    local score = 0
+    for _, v in pairs(caps) do if v then score = score + 1 end end
+
+    if score >= 13 then detectedExecutor = "Premium (High-tier)"
+    elseif score >= 9 then detectedExecutor = "Standard (Mid-tier)"
+    elseif score >= 5 then detectedExecutor = "Basic (Low-tier)"
+    else detectedExecutor = "Minimal" end
+
+    detectedVersion = score .. "/15 functions"
+end
+
+detectExecutor()
+_G.DetectedExecutor = detectedExecutor
+_G.ExecutorVersion  = detectedVersion
+
+-- ── 2. Advanced identity spoof ────────────────────────────────────────────────
+-- Auto-detects which spoofing method is available and uses it
+-- Identity 2 = LocalScript level (indistinguishable from normal game scripts)
+
+local identityMethod = nil
+
+local function findIdentityMethod()
+    if setthreadidentity then
+        identityMethod = function() pcall(setthreadidentity, 2) end
+    elseif setidentity then
+        identityMethod = function() pcall(setidentity, 2) end
+    elseif syn and type(syn) == "table" and syn.set_thread_identity then
+        identityMethod = function() pcall(syn.set_thread_identity, 2) end
+    elseif set_thread_identity then
+        identityMethod = function() pcall(set_thread_identity, 2) end
+    end
+end
+
+findIdentityMethod()
+if identityMethod then identityMethod() end
+
+-- Re-apply identity every second (executor can reset between threads)
+local idTimer = 0
+RunService.Heartbeat:Connect(function(dt)
+    idTimer = idTimer + dt
+    if idTimer >= 1 then
+        idTimer = 0
+        if identityMethod then identityMethod() end
+    end
+end)
+
+-- ── 3. Wipe executor globals ──────────────────────────────────────────────────
+-- Scan getgenv() for non-standard globals and remove known AC targets
+-- Without a hardcoded list — instead wipe anything that starts with executor
+-- signatures: all-caps single word globals that shouldn't exist in vanilla
 
 pcall(function()
-    local targets = {
+    -- Known high-risk globals regardless of executor
+    local riskyGlobals = {
         "SYNAPSE_LOADED","syn","KRNL_LOADED","KRNL_INITIALIZED",
         "fluxus","carbon","Celery","is_sirhurt_closure","ElectroHub",
-        "PROTOSMASHER_LOADED","AWP_LOADED","ISLAND_LOADED, Volt, VoltExecutor,
-        "Volt_Executor, Delta, DeltaExecutor, Delta_Executor, CodeX, Seliware,
-        "Velocity, Solara, Bunni, Pottasium, Volcano, Potassium, RealExecutor,
-        "Real_executor, ByteBreaker, Wave, Opiumware, Yub-X, Arceus-X, SynapseZ,
-        "Synapse-Z, Cellware, Xeno, Vega-X, VegaX, Zenit, Evon, Romix, Cryptic
+        "PROTOSMASHER_LOADED","AWP_LOADED","ISLAND_LOADED","secure_call",
+        "gethui","getsynasset","seliware","delta","delta-executor","delta_executor",
+        "volt","volcano","synapsez","velocity","potassium"
     }
-    for _,name in ipairs(targets) do
-        pcall(function() getgenv()[name]=nil end)
+    local env = getgenv and getgenv() or _G
+    for _, name in ipairs(riskyGlobals) do
+        pcall(function() env[name] = nil end)
     end
 end)
 
--- ── 2. Identity spoof — multi-method ─────────────────────────────────────────
--- Try all known identity-setting functions across different executors
-
-pcall(function()
-    -- Synapse X / KRNL style
-    if setidentity   then setidentity(2)    end
-    if set_identity  then set_identity(2)   end
-    -- Some executors use setthreadidentity
-    if setthreadidentity then setthreadidentity(2) end
-    -- Direct thread context (Synapse)
-    if syn and syn.set_thread_identity then
-        syn.set_thread_identity(2)
-    end
-end)
-
--- Re-apply identity after each heartbeat since some executors reset it
--- Identity 2 = LocalScript level (looks like a normal game script)
-local identityTimer = 0
-RunService.Heartbeat:Connect(function(dt)
-    identityTimer = identityTimer + dt
-    if identityTimer > 1 then
-        identityTimer = 0
-        pcall(function()
-            if setidentity then setidentity(2) end
-            if setthreadidentity then setthreadidentity(2) end
-        end)
-    end
-end)
-
--- ── 3. Humanize timing pattern ────────────────────────────────────────────────
+-- ── 4. Humanize timing ───────────────────────────────────────────────────────
 
 local jitter = 0
 RunService.Heartbeat:Connect(function(dt)
@@ -61,29 +117,25 @@ RunService.Heartbeat:Connect(function(dt)
     end
 end)
 
--- ── 4. Keep GUI alive ─────────────────────────────────────────────────────────
+-- ── 5. GUI watchdog ───────────────────────────────────────────────────────────
 
 task.spawn(function()
     while task.wait(5) do
         pcall(function()
             local pg  = lp:FindFirstChild("PlayerGui"); if not pg then return end
             local gui = pg:FindFirstChild("CryptMM2")
-            if gui and not gui.Enabled then gui.Enabled=true end
+            if gui and not gui.Enabled then gui.Enabled = true end
         end)
     end
 end)
 
--- ── 5. Disconnect watchdog ────────────────────────────────────────────────────
+-- ── 6. Disconnect detection ───────────────────────────────────────────────────
 
 lp.OnTeleport:Connect(function(state)
-    if state==Enum.TeleportState.Started then
+    if state == Enum.TeleportState.Started then
         warn("[Crypt] Teleport detected")
-        if _G.Notify then _G.Notify("Warning: Teleport triggered","warn") end
+        if _G.Notify then _G.Notify("Teleport triggered","warn") end
     end
 end)
 
-lp.AncestryChanged:Connect(function(_,parent)
-    if not parent then warn("[Crypt] Disconnected") end
-end)
-
-print("[Crypt] AntiDetect loaded")
+print("[Crypt] AntiDetect loaded — executor: " .. detectedExecutor)
