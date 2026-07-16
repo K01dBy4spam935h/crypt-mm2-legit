@@ -686,6 +686,68 @@ lbl(adS,"Both on by default — keep them on",3)
 
 _G.ADRandomTimings=true;_G.ADObfuscate=true
 
+-- Background dropdown
+local bgS = sec(settingsPage, "Background", 2)
+
+local bgLabel = lbl(bgS, "Background:  "..((cfg.Backgrounds and cfg.Backgrounds[cfg.ActiveBackground or 1] and cfg.Backgrounds[cfg.ActiveBackground or 1].Name) or "Default"), 1)
+
+if cfg.Backgrounds and #cfg.Backgrounds > 1 then
+    local bgIdx = cfg.ActiveBackground or 1
+    local function applyBG(idx)
+        local entry = cfg.Backgrounds[idx]
+        if not entry then return end
+        bgIdx = idx
+        bgLabel.Text = "Background:  " .. entry.Name
+        local cleanId = tostring(entry.Id):match("%d+")
+        if cleanId and cleanId ~= "0" then
+            bgImg.Image = "rbxthumb://type=Asset&id=" .. cleanId .. "&w=420&h=420"
+        else
+            bgImg.Image = ""
+        end
+    end
+
+    local prevBtn = Instance.new("TextButton"); prevBtn.Size=UDim2.new(0,40,0,26); prevBtn.BackgroundColor3=Color3.fromRGB(255,255,255); prevBtn.BackgroundTransparency=0.85; prevBtn.BorderSizePixel=0; prevBtn.Font=Enum.Font.GothamBold; prevBtn.TextSize=14; prevBtn.TextColor3=Color3.fromRGB(255,255,255); prevBtn.Text="‹"; prevBtn.LayoutOrder=2; prevBtn.ZIndex=7; prevBtn.Parent=bgS
+    local nc = Instance.new("UICorner"); nc.CornerRadius=UDim.new(0,6); nc.Parent=prevBtn
+
+    local nextBtn = Instance.new("TextButton"); nextBtn.Size=UDim2.new(0,40,0,26); nextBtn.BackgroundColor3=Color3.fromRGB(255,255,255); nextBtn.BackgroundTransparency=0.85; nextBtn.BorderSizePixel=0; nextBtn.Font=Enum.Font.GothamBold; nextBtn.TextSize=14; nextBtn.TextColor3=Color3.fromRGB(255,255,255); nextBtn.Text="›"; nextBtn.LayoutOrder=3; nextBtn.ZIndex=7; nextBtn.Parent=bgS
+    local nc2 = Instance.new("UICorner"); nc2.CornerRadius=UDim.new(0,6); nc2.Parent=nextBtn
+
+    prevBtn.MouseButton1Click:Connect(function()
+        bgIdx = ((bgIdx - 2) % #cfg.Backgrounds) + 1
+        applyBG(bgIdx)
+    end)
+    nextBtn.MouseButton1Click:Connect(function()
+        bgIdx = (bgIdx % #cfg.Backgrounds) + 1
+        applyBG(bgIdx)
+    end)
+end
+
+-- Minimize icon dropdown
+local iconS = sec(settingsPage, "Minimize Icon", 3)
+local iconLabel = lbl(iconS, "Icon:  Default", 1)
+
+if cfg.MinimizeIcons and #cfg.MinimizeIcons > 1 then
+    local icoIdx = cfg.ActiveMinimizeIcon or 1
+    local function applyIcon(idx)
+        local entry = cfg.MinimizeIcons[idx]
+        if not entry then return end
+        icoIdx = idx
+        iconLabel.Text = "Icon:  " .. entry.Name
+        local cleanId = tostring(entry.Id):match("%d+")
+        if cleanId and cleanId ~= "0" then
+            iconImg.Image = "rbxthumb://type=Asset&id=" .. cleanId .. "&w=420&h=420"
+        else
+            iconImg.Image = ""
+        end
+    end
+    local ip=Instance.new("TextButton"); ip.Size=UDim2.new(0,40,0,26); ip.BackgroundColor3=Color3.fromRGB(255,255,255); ip.BackgroundTransparency=0.85; ip.BorderSizePixel=0; ip.Font=Enum.Font.GothamBold; ip.TextSize=14; ip.TextColor3=Color3.fromRGB(255,255,255); ip.Text="‹"; ip.LayoutOrder=2; ip.ZIndex=7; ip.Parent=iconS
+    local ic = Instance.new("UICorner"); ic.CornerRadius=UDim.new(0,6); ic.Parent=ip
+    local in2=Instance.new("TextButton"); in2.Size=UDim2.new(0,40,0,26); in2.BackgroundColor3=Color3.fromRGB(255,255,255); in2.BackgroundTransparency=0.85; in2.BorderSizePixel=0; in2.Font=Enum.Font.GothamBold; in2.TextSize=14; in2.TextColor3=Color3.fromRGB(255,255,255); in2.Text="›"; in2.LayoutOrder=3; in2.ZIndex=7; in2.Parent=iconS
+    local ic2 = Instance.new("UICorner"); ic2.CornerRadius=UDim.new(0,6); ic2.Parent=in2
+    ip.MouseButton1Click:Connect(function() icoIdx=((icoIdx-2)%#cfg.MinimizeIcons)+1; applyIcon(icoIdx) end)
+    in2.MouseButton1Click:Connect(function() icoIdx=(icoIdx%#cfg.MinimizeIcons)+1; applyIcon(icoIdx) end)
+end
+
 -- ── Footer hint ───────────────────────────────────────────────────────────────
 
 local hint=Instance.new("TextLabel"); hint.Text="Right Control — toggle"; hint.Font=Enum.Font.Gotham; hint.TextSize=10; hint.TextColor3=Color3.fromRGB(70,70,80); hint.BackgroundTransparency=1; hint.Size=UDim2.new(1,0,0,14); hint.Position=UDim2.new(0,0,1,-16); hint.TextXAlignment=Enum.TextXAlignment.Center; hint.ZIndex=6; hint.Parent=main
