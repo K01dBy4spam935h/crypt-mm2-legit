@@ -519,38 +519,6 @@ task.spawn(function()
 end)
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- AIMBOT TAB
--- ─────────────────────────────────────────────────────────────────────────────
-
-local abS=sec(aimbotPage,"Aimbot",1)
-tog(abS,"Enable Aimbot",       false,function(v) _G.AimbotEnabled=v    end,1)
-tog(abS,"Require Right Click", false,function(v) _G.AimbotRightClick=v end,2)
-
-local tgtS=sec(aimbotPage,"Target",2)
-tog(tgtS,"Aim Murderer",false,function(v) _G.AimMurderer=v end,1)
-tog(tgtS,"Aim Sheriff", false,function(v) _G.AimSheriff=v  end,2)
-lbl(tgtS,"Both off = aim everyone",3)
-
-local abSet=sec(aimbotPage,"Settings",3)
-sld(abSet,"Smoothing",  1,15, 2,  function(v) _G.AimbotSmoothing=v end,1)
-sld(abSet,"FOV Radius", 20,600,250,function(v) _G.AimbotFOV=v       end,2)
-tog(abSet,"Show FOV",       false,function(v) _G.ShowFOV=v      end,3)
-tog(abSet,"FOV RGB",        false,function(v) _G.FovRGB=v        end,4)
-tog(abSet,"Target Tracer",  false,function(v) _G.TargetTracer=v  end,5)
-
-local tbS=sec(aimbotPage,"Triggerbot",4)
-tog(tbS,"Enable Triggerbot",false,function(v) _G.TriggerEnabled=v  end,1)
-tog(tbS,"Trigger Murderer", false,function(v) _G.TriggerMurd=v     end,2)
-tog(tbS,"Trigger Sheriff",  false,function(v) _G.TriggerSheriff=v  end,3)
-lbl(tbS,"Both off = trigger all",4)
-sld(tbS,"Trigger FOV",5,100,30,  function(v) _G.TriggerFOV=v   end,5)
-sld(tbS,"Trigger Delay (ms)",50,800,180,function(v) _G.TriggerDelay=v/1000 end,6)
-
-_G.AimbotEnabled=false;_G.AimbotRightClick=false;_G.AimMurderer=false;_G.AimSheriff=false
-_G.AimbotSmoothing=2;_G.AimbotFOV=250;_G.ShowFOV=false;_G.FovRGB=false;_G.TargetTracer=false
-_G.TriggerEnabled=false;_G.TriggerMurd=false;_G.TriggerSheriff=false;_G.TriggerFOV=30;_G.TriggerDelay=0.18
-
--- ─────────────────────────────────────────────────────────────────────────────
 -- VISUALS TAB
 -- ─────────────────────────────────────────────────────────────────────────────
 
