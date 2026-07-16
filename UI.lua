@@ -458,6 +458,55 @@ local placeLbl=copyRow(srvS,"Place ID:  loading…", function() return game.Plac
 local countLbl=copyRow(srvS,"Players:   loading…", function() return #Players:GetPlayers().."/"..Players.MaxPlayers end,3)
 local pingLbl =copyRow(srvS,"Ping:      loading…", function() return math.floor(Stats.Network.ServerStatsItem["Data Ping"]:GetValue()).." ms" end,4)
 
+-- After roleS section:
+
+local execS = sec(mainPage, "Executor", 4)
+
+local execNameL = Instance.new("TextLabel"); execNameL.Text="Your Executor:  loading…"; execNameL.Font=Enum.Font.GothamBold; execNameL.TextSize=12; execNameL.TextColor3=Color3.fromRGB(230,230,230); execNameL.BackgroundTransparency=1; execNameL.Size=UDim2.new(1,0,0,18); execNameL.TextXAlignment=Enum.TextXAlignment.Left; execNameL.LayoutOrder=1; execNameL.ZIndex=7; execNameL.Parent=execS
+
+-- UNC checker
+local uncFunctions = {
+    "firetouchinterest","fireclickdetector","fireproximityprompt",
+    "getconnections","getrawmetatable","setreadonly","hookfunction",
+    "newcclosure","clonefunction","decompile","getscripts",
+    "getsenv","getcallstack","getupvalues","setupvalue",
+    "writefile","readfile","listfiles","makefolder","isfile","isfolder",
+    "Drawing","getgenv","getrenv","getreg",
+    "setidentity","setthreadidentity","getthreadidentity",
+    "mouse1click","mouse2click","keypress","keyrelease",
+}
+
+local uncPass = 0
+for _, fn in ipairs(uncFunctions) do
+    if _G[fn] ~= nil or (type(_G[fn]) == "function") then
+        uncPass = uncPass + 1
+    end
+    -- Also check global env
+    pcall(function()
+        local env = getgenv and getgenv() or {}
+        if env[fn] ~= nil then uncPass = uncPass + 1 end
+    end)
+end
+-- Avoid double counting
+uncPass = math.min(uncPass, #uncFunctions)
+local uncPct = math.floor((uncPass / #uncFunctions) * 100)
+
+-- Compatibility tier
+local compat, compatCol
+if uncPct >= 85 then compat="Excellent"; compatCol=Color3.fromRGB(60,200,80)
+elseif uncPct >= 65 then compat="Good"; compatCol=Color3.fromRGB(100,200,255)
+elseif uncPct >= 45 then compat="Fair"; compatCol=Color3.fromRGB(240,170,50)
+else compat="Poor"; compatCol=Color3.fromRGB(220,70,70) end
+
+local uncL = Instance.new("TextLabel"); uncL.Font=Enum.Font.Gotham; uncL.TextSize=11; uncL.TextColor3=compatCol; uncL.BackgroundTransparency=1; uncL.Size=UDim2.new(1,0,0,16); uncL.TextXAlignment=Enum.TextXAlignment.Left; uncL.LayoutOrder=2; uncL.ZIndex=7; uncL.Parent=execS
+local compatL = Instance.new("TextLabel"); compatL.Text="Compatibility:  "..compat; compatL.Font=Enum.Font.GothamBold; compatL.TextSize=11; compatL.TextColor3=compatCol; compatL.BackgroundTransparency=1; compatL.Size=UDim2.new(1,0,0,16); compatL.TextXAlignment=Enum.TextXAlignment.Left; compatL.LayoutOrder=3; compatL.ZIndex=7; compatL.Parent=execS
+
+task.spawn(function()
+    task.wait(0.5)  -- wait for AntiDetect to run
+    execNameL.Text = "Your Executor:  " .. (_G.DetectedExecutor or "Unknown")
+    uncL.Text = "UNC:  " .. uncPct .. "% (" .. uncPass .. "/" .. #uncFunctions .. " functions)"
+end)
+
 task.spawn(function()
     while task.wait(1) do
         pcall(function()
@@ -625,6 +674,32 @@ task.spawn(function()
 end)
 
 _G.MurdererArrow=false
+
+-- Add to sheriff tab in UI.lua:
+
+local saS = sec(sheriffPage, "Silent Aim", 2)
+tog(saS, "Enable Silent Aim", false, function(v) _G.SilentAim = v end, 1)
+sld(saS, "Silent Aim Size", 5, 60, 30, function(v) _G.SilentAimSize = v end, 2)
+lbl(saS, "Expands murderer hitbox — no camera movement", 3)
+
+_G.SilentAim     = false
+_G.SilentAimSize = 30
+
+-- Aimbot section in Sheriff tab
+local abShS = sec(sheriffPage, "Aimbot", 3)
+tog(abShS, "Enable Aimbot",       false, function(v) _G.AimbotEnabled    = v end, 1)
+tog(abShS, "Require Right Click", false, function(v) _G.AimbotRightClick = v end, 2)
+sld(abShS, "Smoothing",    1, 15, 2,   function(v) _G.AimbotSmoothing = v end, 3)
+sld(abShS, "FOV Radius",  20,600, 250, function(v) _G.AimbotFOV       = v end, 4)
+tog(abShS, "Show FOV",    false, function(v) _G.ShowFOV = v end, 5)
+tog(abShS, "FOV RGB",     false, function(v) _G.FovRGB  = v end, 6)
+
+local tbShS = sec(sheriffPage, "Triggerbot", 4)
+tog(tbShS, "Enable Triggerbot", false, function(v) _G.TriggerEnabled = v end, 1)
+sld(tbShS, "Trigger FOV",    5, 100, 30, function(v) _G.TriggerFOV   = v end, 2)
+sld(tbShS, "Trigger Delay",  0, 800, 180, function(v) _G.TriggerDelay = v/1000 end, 3)
+-- ^ delay goes to 0 now
+lbl(tbShS, "0ms = instant fire, raise for high-ping servers", 4)
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- FARM TAB
