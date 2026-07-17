@@ -102,7 +102,9 @@ end
 local function removeESP(p)
     local obj = pool[p]
     if not obj then return end
-    for _, l in ipairs(obj.box) do pcall(function() l:Remove() end) end
+    for i = 1, 4 do
+        if obj.box[i] then pcall(function() obj.box[i]:Remove() end) end
+    end
     if obj.name then pcall(function() obj.name:Remove() end) end
     if obj.dist then pcall(function() obj.dist:Remove() end) end
     if obj.tracer then pcall(function() obj.tracer:Remove() end) end
@@ -164,22 +166,29 @@ RunService.RenderStepped:Connect(function()
                     local currentRole = _G.RoleCache[p] or "Innocent"
                     local color = roleColor(currentRole)
                     
-                    -- FIXED: Properly indexed drawing lines inside the array container
-                    obj.box[1].From = Vector2.new(x, y)
-                    obj.box[1].To = Vector2.new(x + w, y)
+                    -- FIXED: Safe explicit bracket indexing to stop the 'call nil value' crash
+                    local line1 = obj.box[1]
+                    local line2 = obj.box[2]
+                    local line3 = obj.box[3]
+                    local line4 = obj.box[4]
                     
-                    obj.box[2].From = Vector2.new(x + w, y)
-                    obj.box[2].To = Vector2.new(x + w, y + h)
-                    
-                    obj.box[3].From = Vector2.new(x + w, y + h)
-                    obj.box[3].To = Vector2.new(x, y + h)
-                    
-                    obj.box[4].From = Vector2.new(x, y + h)
-                    obj.box[4].To = Vector2.new(x, y)
-                    
-                    for _, l in ipairs(obj.box) do
-                        l.Color = color
-                        l.Visible = true
+                    if line1 and line2 and line3 and line4 then
+                        line1.From = Vector2.new(x, y)
+                        line1.To   = Vector2.new(x + w, y)
+                        
+                        line2.From = Vector2.new(x + w, y)
+                        line2.To   = Vector2.new(x + w, y + h)
+                        
+                        line3.From = Vector2.new(x + w, y + h)
+                        line3.To   = Vector2.new(x, y + h)
+                        
+                        line4.From = Vector2.new(x, y + h)
+                        line4.To   = Vector2.new(x, y)
+                        
+                        for i = 1, 4 do
+                            obj.box[i].Color = color
+                            obj.box[i].Visible = true
+                        end
                     end
                     
                     obj.name.Text = string.format("[%s] %s", currentRole, p.Name)
@@ -199,7 +208,7 @@ RunService.RenderStepped:Connect(function()
                     obj.tracer.Visible = true
                 else
                     if pool[p] then
-                        for _, l in ipairs(pool[p].box) do l.Visible = false end
+                        for i = 1, 4 do if pool[p].box[i] then pool[p].box[i].Visible = false end end
                         pool[p].name.Visible = false
                         pool[p].dist.Visible = false
                         pool[p].tracer.Visible = false
