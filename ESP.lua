@@ -1,4 +1,4 @@
--- Crypt-MM2-Legit | Instant Scan with Tool Backup System
+-- Crypt-MM2-Legit | Instant Scan with Fixed Rendering Array
 
 local Players    = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -12,7 +12,6 @@ _G.RoundActive = false
 
 local pool = {}
 
--- Clean up a player's role flags globally if they are demoted
 local function clearRoleFromOthers(role)
     for p, r in pairs(_G.RoleCache) do
         if r == role then
@@ -25,7 +24,6 @@ local function setRole(player, role, source)
     if not player or not role then return end
     local cur = _G.RoleCache[player]
 
-    -- Tool detection always overrides previous data (handles Hero pick-ups)
     if source == "Tool" then
         if role == "Murderer" or role == "Sheriff" then
             clearRoleFromOthers(role)
@@ -35,14 +33,13 @@ local function setRole(player, role, source)
         return
     end
 
-    -- Scanner logic: lock roles and protect them from basic "Innocent" overrides
     if (cur == "Murderer" or cur == "Sheriff") and role == "Innocent" then return end
     
     _G.RoleCache[player] = role
     if player == lp then _G.MyRole = role end
 end
 
--- ── Layer 1: Instant Native Data Scanner (No Weapon Wait Timer) ──────
+-- ── Layer 1: Instant Native Data Scanner ─────────────────────────────
 local function scanGetPlayerData()
     local fn = RS:FindFirstChild("GetPlayerData", true)
     if not (fn and fn:IsA("RemoteFunction")) then return false end
@@ -74,7 +71,7 @@ task.spawn(function()
     while task.wait(1) do pcall(scanGetPlayerData) end
 end)
 
--- ── Layer 2: Tool Detection Backup (Overrides Scanner Data) ──────────
+-- ── Layer 2: Tool Detection Backup ───────────────────────────────────
 local function checkCharacterTool(char)
     if not (char and char:IsA("Model")) then return end
     local p = Players:GetPlayerFromCharacter(char)
@@ -95,7 +92,7 @@ workspace.DescendantAdded:Connect(function(desc)
     end
 end)
 
--- ── Visual Drawing Helpers ──────────────────────────────────────────────────
+-- ── Visual Drawing Helpers ───────────────────────────────────────────
 local function roleColor(role)
     if role == "Murderer" then return Color3.fromRGB(255, 55, 55) end
     if role == "Sheriff"  then return Color3.fromRGB(55, 210, 255) end
@@ -144,7 +141,7 @@ local function makeESP(p)
     pool[p] = obj
 end
 
--- ── Core Update Rendering Loop ────────────────────────────────────────────────
+-- ── Core Update Rendering Loop ───────────────────────────────────────
 RunService.RenderStepped:Connect(function()
     for _, p in ipairs(Players:GetPlayers()) do
         if p ~= lp then
@@ -167,7 +164,7 @@ RunService.RenderStepped:Connect(function()
                     local currentRole = _G.RoleCache[p] or "Innocent"
                     local color = roleColor(currentRole)
                     
-                    -- FIXED: Correct line array index mapping to prevent global highlighting bleed
+                    -- FIXED: Properly indexed drawing lines inside the array container
                     obj.box[1].From = Vector2.new(x, y)
                     obj.box[1].To = Vector2.new(x + w, y)
                     
@@ -215,7 +212,7 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- ── Event Lifecycle Cleaning ─────────────────────────────────────────────────
+-- ── Event Lifecycle Cleaning ─────────────────────────────────────────
 local function resetAll()
     _G.MyRole = nil
     _G.RoundActive = false
