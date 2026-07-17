@@ -1,4 +1,4 @@
--- Crypt-MM2-Legit | Instant Scan with Fixed Rendering Array
+-- Crypt-MM2-Legit | Instant Scan with Optimized Drawing Square Engine
 
 local Players    = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -102,9 +102,8 @@ end
 local function removeESP(p)
     local obj = pool[p]
     if not obj then return end
-    for i = 1, 4 do
-        if obj.box[i] then pcall(function() obj.box[i]:Remove() end) end
-    end
+    
+    if obj.box then pcall(function() obj.box:Remove() end) end
     if obj.name then pcall(function() obj.name:Remove() end) end
     if obj.dist then pcall(function() obj.dist:Remove() end) end
     if obj.tracer then pcall(function() obj.tracer:Remove() end) end
@@ -113,14 +112,15 @@ end
 
 local function makeESP(p)
     if p == lp or pool[p] then return end
-    local obj = { box = {} }
-    for i = 1, 4 do
-        local l = Drawing.new("Line")
-        l.Thickness = 1.5
-        l.Visible = false
-        l.Transparency = 1
-        obj.box[i] = l
-    end
+    local obj = {}
+    
+    -- FIXED: Swapped out broken multiline arrays for a unified Drawing Square [1]
+    obj.box = Drawing.new("Square")
+    obj.box.Thickness = 1.5
+    obj.box.Filled = false
+    obj.box.Visible = false
+    obj.box.Transparency = 1
+    
     obj.name = Drawing.new("Text")
     obj.name.Size = 14
     obj.name.Font = 2
@@ -166,30 +166,11 @@ RunService.RenderStepped:Connect(function()
                     local currentRole = _G.RoleCache[p] or "Innocent"
                     local color = roleColor(currentRole)
                     
-                    -- FIXED: Safe explicit bracket indexing to stop the 'call nil value' crash
-                    local line1 = obj.box[1]
-                    local line2 = obj.box[2]
-                    local line3 = obj.box[3]
-                    local line4 = obj.box[4]
-                    
-                    if line1 and line2 and line3 and line4 then
-                        line1.From = Vector2.new(x, y)
-                        line1.To   = Vector2.new(x + w, y)
-                        
-                        line2.From = Vector2.new(x + w, y)
-                        line2.To   = Vector2.new(x + w, y + h)
-                        
-                        line3.From = Vector2.new(x + w, y + h)
-                        line3.To   = Vector2.new(x, y + h)
-                        
-                        line4.From = Vector2.new(x, y + h)
-                        line4.To   = Vector2.new(x, y)
-                        
-                        for i = 1, 4 do
-                            obj.box[i].Color = color
-                            obj.box[i].Visible = true
-                        end
-                    end
+                    -- CRASH-PROOFED: Flat configuration assignment on single primitive
+                    obj.box.Position = Vector2.new(x, y)
+                    obj.box.Size = Vector2.new(w, h)
+                    obj.box.Color = color
+                    obj.box.Visible = true
                     
                     obj.name.Text = string.format("[%s] %s", currentRole, p.Name)
                     obj.name.Position = Vector2.new(rpos.X, y - 20)
@@ -208,7 +189,7 @@ RunService.RenderStepped:Connect(function()
                     obj.tracer.Visible = true
                 else
                     if pool[p] then
-                        for i = 1, 4 do if pool[p].box[i] then pool[p].box[i].Visible = false end end
+                        pool[p].box.Visible = false
                         pool[p].name.Visible = false
                         pool[p].dist.Visible = false
                         pool[p].tracer.Visible = false
