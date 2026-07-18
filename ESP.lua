@@ -10,56 +10,87 @@ _G.RoleCache   = {}
 _G.MyRole      = nil
 _G.RoundActive = false
 
--- Active highlight pool (matches reference applyESP pattern)
-local activeHighlights = {}
+-- ── Lobby detection on execute ────────────────────────────────────────────────
+-- If in lobby when script loads, set self as Innocent immediately
 
-local function clearAllESP()
-    for char, highlight in pairs(activeHighlights) do
-        if highlight then pcall(function() highlight:Destroy() end) end
-    end
-    activeHighlights = {}
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player.Character and player.Character:FindFirstChild("RoleESP") then
-            pcall(function() player.Character.RoleESP:Destroy() end)
+task.spawn(function()
+    task.wait(1)
+    -- Check MM2 timer text — if it says lobby/waiting, we're in lobby
+    local localGui = lp:FindFirstChild("PlayerGui")
+    local mainGui  = localGui and localGui:FindFirstChild("MainGui")
+    local gameUI   = mainGui and mainGui:FindFirstChild("Game")
+    local timerTxt = gameUI and gameUI:FindFirstChild("Timer")
+
+    local inLobby = true
+
+    if timerTxt and timerTxt:IsA("TextLabel") then
+        local t = timerTxt.Text:lower()
+        if not (t:find("lobby") or t:find("wait") or t == "00:00" or t == "") then
+            inLobby = false
         end
     end
+
+    -- Also check if GetPlayerData returns roles
+    local fn = RS:FindFirstChild("GetPlayerData", true)
+    if fn and fn:IsA("RemoteFunction") then
+        local ok, result = pcall(function() return fn:InvokeServer() end)
+        if ok and type(result) == "table" then
+            for _, data in pairs(result) do
+                if data and (data.Role == "Murderer" or data.Role == "Sheriff") then
+                    inLobby = false; break
+                end
+            end
+        end
+    end
+
+    if inLobby then
+        _G.MyRole = "Innocent"
+        _G.RoleCache[lp] = "Innocent"
+        _G.RoundActive = false
+        if _G.Notify then _G.Notify("⚪ In lobby — role: Innocent", "info") end
+    end
+end)
+
+-- ── Role highlight pool (separate from ESP box pool) ─────────────────────────
+
+local activeHighlights = {}
+
+local function clearAllHighlights()
+    for char, hl in pairs(activeHighlights) do
+        if hl then pcall(function() hl:Destroy() end) end
+    end
+    activeHighlights = {}
 end
 
--- Re-apply ESP highlight when role is known
-local function applyRoleESP(player, role)
+-- Apply role-colored highlight — used for Murderer/Sheriff chams
+local function applyRoleHighlight(player, role)
     if player == lp then return end
     local char = player.Character; if not char then return end
 
-    -- Remove old highlight if role changed
-    local old = char:FindFirstChild("RoleESP")
-    if old then old:Destroy() end
-    if activeHighlights[char] then
-        pcall(function() activeHighlights[char]:Destroy() end)
-        activeHighlights[char] = nil
-    end
+    local existing = activeHighlights[char]
+    if existing then pcall(function() existing:Destroy() end); activeHighlights[char] = nil end
 
-    if not (_G.ChamsESP or _G.BoxESP or _G.NameESP) then return end
+    if not _G.ChamsESP then return end
     if not _G.RoundActive then return end
 
     local color
     if role == "Murderer" then color = Color3.fromRGB(255, 35, 35)
     elseif role == "Sheriff" then color = Color3.fromRGB(35, 120, 255)
-    else return end  -- don't highlight innocents with role esp
+    else color = Color3.fromRGB(80, 220, 100) end   -- innocent = green
 
-    local highlight = Instance.new("Highlight")
-    highlight.Name               = "RoleESP"
-    highlight.FillColor          = color
-    highlight.OutlineColor       = Color3.fromRGB(255, 255, 255)
-    highlight.FillTransparency   = 0.4
-    highlight.OutlineTransparency = 0
-    highlight.Adornee            = char
-    highlight.DepthMode          = Enum.HighlightDepthMode.AlwaysOnTop
-    highlight.Parent             = char
-    activeHighlights[char]       = highlight
+    local hl = Instance.new("Highlight")
+    hl.Name               = "RoleESP"
+    hl.FillColor          = color
+    hl.OutlineColor       = Color3.fromRGB(255, 255, 255)
+    hl.FillTransparency   = 0.4
+    hl.OutlineTransparency = 0
+    hl.DepthMode          = Enum.HighlightDepthMode.AlwaysOnTop
+    hl.Adornee            = char
+    hl.Parent             = char
+    activeHighlights[char] = hl
 end
 
--- ── STEP 1: Instant — GetPlayerData:InvokeServer() ───────────────────────────
--- EXACT reference logic, no modifications to the core scan
+-- ── STEP 1: Instant — GetPlayerData:InvokeServer() exact reference logic ──────
 
 local function scanGameNetwork()
     local playerDataFunction = RS:FindFirstChild("GetPlayerData", true)
@@ -76,21 +107,20 @@ local function scanGameNetwork()
                     local prevRole = _G.RoleCache[targetPlayer]
                     local newRole  = data.Role
 
-                    -- Only update if changed
                     if prevRole ~= newRole then
                         _G.RoleCache[targetPlayer] = newRole
                         if targetPlayer == lp then
                             _G.MyRole = newRole
-                            -- Instant role notifier
-                            if _G.Notify and newRole ~= "Innocent" then
+                            if _G.Notify and not _G._RoleNotified then
+                                _G._RoleNotified = true
                                 local icons = {Murderer="🔴", Sheriff="🔵", Innocent="⚪"}
-                                _G.Notify((icons[newRole] or "") .. " You are the " .. newRole .. "!", newRole=="Murderer" and "error" or "info")
+                                _G.Notify((icons[newRole] or "").. " You are the " .. newRole .. "!", newRole=="Murderer" and "error" or "info")
                             end
                         end
                         if newRole == "Murderer" or newRole == "Sheriff" then
                             _G.RoundActive = true
-                            applyRoleESP(targetPlayer, newRole)
                         end
+                        applyRoleHighlight(targetPlayer, newRole)
                     end
                 end
             end
@@ -98,16 +128,16 @@ local function scanGameNetwork()
     end
 end
 
--- Run Step 1 every 1s — GetPlayerData is not expensive, works well at this rate
 task.spawn(function()
-    while task.wait(1) do
-        pcall(scanGameNetwork)
-    end
+    while task.wait(1) do pcall(scanGameNetwork) end
 end)
 
--- ── STEP 2: Tool verification — checks weapons to confirm/correct Step 1 ──────
--- If GetPlayerData says Innocent but player has knife → override to Murderer
--- If GetPlayerData says Murderer but tool says Gun → switch
+-- Reset notifier each round
+lp.CharacterAdded:Connect(function()
+    task.wait(0.5); _G._RoleNotified = false
+end)
+
+-- ── STEP 2: Tool verification — confirms or corrects Step 1 ─────────────────
 
 local function verifyRolesWithTools()
     for _, player in ipairs(Players:GetPlayers()) do
@@ -116,30 +146,20 @@ local function verifyRolesWithTools()
         local bp   = player:FindFirstChild("Backpack")
         local hasKnife = (char and char:FindFirstChild("Knife")) or (bp and bp:FindFirstChild("Knife"))
         local hasGun   = (char and char:FindFirstChild("Gun"))   or (bp and bp:FindFirstChild("Gun"))
-
-        local toolRole = nil
-        if hasKnife then toolRole = "Murderer"
-        elseif hasGun then toolRole = "Sheriff" end
-
-        if toolRole then
-            local currentRole = _G.RoleCache[player]
-            if currentRole ~= toolRole then
-                -- Tool verification found a conflict — switch
-                _G.RoleCache[player] = toolRole
-                _G.RoundActive = true
-                applyRoleESP(player, toolRole)
-            end
+        local toolRole = hasKnife and "Murderer" or (hasGun and "Sheriff" or nil)
+        if toolRole and _G.RoleCache[player] ~= toolRole then
+            _G.RoleCache[player] = toolRole
+            _G.RoundActive = true
+            applyRoleHighlight(player, toolRole)
         end
     end
 end
 
 task.spawn(function()
-    while task.wait(2) do
-        pcall(verifyRolesWithTools)
-    end
+    while task.wait(2) do pcall(verifyRolesWithTools) end
 end)
 
--- ── Tool DescendantAdded for instant tool detection ───────────────────────────
+-- ── Workspace DescendantAdded — instant tool fallback ────────────────────────
 
 workspace.DescendantAdded:Connect(function(desc)
     if not desc:IsA("Tool") then return end
@@ -151,27 +171,26 @@ workspace.DescendantAdded:Connect(function(desc)
         for _, p in ipairs(Players:GetPlayers()) do
             if p.Character == char then
                 local role = name == "knife" and "Murderer" or "Sheriff"
-                _G.RoleCache[p] = role
-                _G.RoundActive  = true
-                applyRoleESP(p, role)
+                if _G.RoleCache[p] ~= role then
+                    _G.RoleCache[p] = role
+                    _G.RoundActive  = true
+                    applyRoleHighlight(p, role)
+                end
                 return
             end
         end
     end)
 end)
 
--- ── PlayerGui role announcement — instant MY role detector ────────────────────
--- Fires exactly when StartRound fires, before tools appear
+-- ── PlayerGui role announcement — instant MY role ────────────────────────────
 
 task.spawn(function()
     local pg = lp:WaitForChild("PlayerGui")
     pg.DescendantAdded:Connect(function(desc)
         if not (desc:IsA("TextLabel") or desc:IsA("TextButton")) then return end
         local txt = (desc.Text or ""):upper()
-        -- Match MM2's role screen (large text, contains role keyword)
         local isRoleScreen = (desc.TextSize and desc.TextSize >= 14)
             or txt:find("YOU ARE") or txt:find("YOU'RE")
-
         if not isRoleScreen then return end
 
         local role = nil
@@ -180,10 +199,10 @@ task.spawn(function()
         elseif txt:find("INNOCENT") then role = "Innocent" end
 
         if role then
-            _G.MyRole = role
-            _G.RoleCache[lp] = role
+            _G.MyRole = role; _G.RoleCache[lp] = role
             if role ~= "Innocent" then _G.RoundActive = true end
-            if _G.Notify then
+            if _G.Notify and not _G._RoleNotified then
+                _G._RoleNotified = true
                 local icons = {Murderer="🔴", Sheriff="🔵", Innocent="⚪"}
                 _G.Notify((icons[role] or "") .. " You are the " .. role .. "!", role=="Murderer" and "error" or "info")
             end
@@ -191,10 +210,12 @@ task.spawn(function()
     end)
 end)
 
--- ── Round reset on character spawn ───────────────────────────────────────────
+-- ── Round reset ───────────────────────────────────────────────────────────────
 
 lp.CharacterAdded:Connect(function()
-    task.wait(1); _G.MyRole=nil; _G.RoleCache[lp]=nil; _G.RoundActive=false; clearAllESP()
+    task.wait(1)
+    _G.MyRole = nil; _G.RoleCache[lp] = nil; _G.RoundActive = false
+    clearAllHighlights()
 end)
 
 Players.PlayerAdded:Connect(function(p) _G.RoleCache[p] = nil end)
@@ -215,16 +236,16 @@ local function roleColor(role)
     return Color3.fromRGB(80, 220, 100)
 end
 
--- ── Gun Drop — Chams (Highlight), no tracer ───────────────────────────────────
+-- ── Gun Drop Chams — Highlight, no tracer ─────────────────────────────────────
 
-local gunHighlight = nil
+local gunHighlight  = nil
 local gunNotifReady = true
 
 local function findGunDrop()
     local g = workspace:FindFirstChild("GunDrop"); if g then return g end
     for _, obj in ipairs(workspace:GetChildren()) do
         if obj.Name=="Normal" or obj:FindFirstChild("CoinContainer") or obj.Name:match("Map") then
-            local h = obj:FindFirstChild("GunDrop", true); if h then return h end
+            local h = obj:FindFirstChild("GunDrop",true); if h then return h end
         end
     end
 end
@@ -232,18 +253,17 @@ end
 local function updateGunChams()
     local gd = findGunDrop()
     if _G.GunESP and gd then
-        if not gunHighlight or not gunHighlight.Parent then
+        if not (gunHighlight and gunHighlight.Parent) then
+            if gunHighlight then pcall(function() gunHighlight:Destroy() end) end
             gunHighlight = Instance.new("Highlight")
             gunHighlight.FillColor          = Color3.fromRGB(255, 230, 50)
             gunHighlight.OutlineColor       = Color3.fromRGB(255, 255, 255)
             gunHighlight.FillTransparency   = 0.3
             gunHighlight.OutlineTransparency = 0
             gunHighlight.DepthMode          = Enum.HighlightDepthMode.AlwaysOnTop
-            gunHighlight.Adornee            = gd
             gunHighlight.Parent             = workspace
-        else
-            gunHighlight.Adornee = gd
         end
+        gunHighlight.Adornee = gd
     else
         if gunHighlight then gunHighlight.Adornee = nil end
     end
@@ -260,12 +280,13 @@ end)
 workspace.ChildRemoved:Connect(function(child)
     if child.Name == "GunDrop" then
         if gunHighlight then gunHighlight.Adornee = nil end
-        gunNotifReady = false
         task.delay(1, function() gunNotifReady = true end)
     end
 end)
 
--- ── ESP Pool ──────────────────────────────────────────────────────────────────
+-- ── Chams for ALL players ─────────────────────────────────────────────────────
+-- Pool handles box/name/dist drawing
+-- Chams (Highlight) applied per-player based on role during render
 
 local pool = {}
 
@@ -276,20 +297,30 @@ local function makeESP(p)
     obj.name   = Drawing.new("Text"); obj.name.Size=13; obj.name.Font=Drawing.Fonts.Plex; obj.name.Center=true; obj.name.Outline=true; obj.name.Visible=false
     obj.dist   = Drawing.new("Text"); obj.dist.Size=11; obj.dist.Font=Drawing.Fonts.Plex; obj.dist.Center=true; obj.dist.Outline=true; obj.dist.Visible=false
     obj.tracer = Drawing.new("Line"); obj.tracer.Thickness=1; obj.tracer.Visible=false; obj.tracer.Transparency=1
+    -- Per-player highlight for full chams on EVERYONE
+    obj.hl = Instance.new("Highlight")
+    obj.hl.DepthMode          = Enum.HighlightDepthMode.AlwaysOnTop
+    obj.hl.FillTransparency   = 1
+    obj.hl.OutlineTransparency = 1
+    obj.hl.Adornee            = nil
+    obj.hl.Parent             = workspace
     pool[p] = obj
 end
 
 local function removeESP(p)
-    local obj=pool[p]; if not obj then return end
+    local obj = pool[p]; if not obj then return end
     for _,l in ipairs(obj.box) do pcall(function() l:Remove() end) end
-    pcall(function() obj.name:Remove() end); pcall(function() obj.dist:Remove() end)
+    pcall(function() obj.name:Remove() end)
+    pcall(function() obj.dist:Remove() end)
     pcall(function() obj.tracer:Remove() end)
+    pcall(function() obj.hl:Destroy() end)
     pool[p] = nil
 end
 
 local function hideObj(obj)
     for _,l in ipairs(obj.box) do l.Visible=false end
     obj.name.Visible=false; obj.dist.Visible=false; obj.tracer.Visible=false
+    obj.hl.FillTransparency=1; obj.hl.OutlineTransparency=1; obj.hl.Adornee=nil
 end
 
 for _,p in ipairs(Players:GetPlayers()) do makeESP(p) end
@@ -310,9 +341,26 @@ RunService.RenderStepped:Connect(function()
         local role  = _G.RoundActive and _G.RoleCache[player] or nil
         local color = roleColor(role)
 
+        -- Chams: highlights ALL players when ChamsESP is on
+        -- Murderer = red, Sheriff = cyan, Innocent = green
+        if _G.ChamsESP then
+            obj.hl.Adornee            = char
+            obj.hl.FillColor          = color
+            obj.hl.OutlineColor       = Color3.fromRGB(255,255,255)
+            obj.hl.FillTransparency   = 0.45
+            obj.hl.OutlineTransparency = 0
+        else
+            obj.hl.FillTransparency   = 1
+            obj.hl.OutlineTransparency = 1
+            obj.hl.Adornee            = nil
+        end
+
         local hSP,hVis = camera:WorldToViewportPoint(root.Position+Vector3.new(0,3.2,0))
         local fSP,fVis = camera:WorldToViewportPoint(root.Position-Vector3.new(0,2.8,0))
-        if not (hVis and fVis) then hideObj(obj); continue end
+        if not (hVis and fVis) then
+            for _,l in ipairs(obj.box) do l.Visible=false end
+            obj.name.Visible=false; obj.dist.Visible=false; obj.tracer.Visible=false; continue
+        end
 
         local h=math.abs(hSP.Y-fSP.Y); local w=h*0.5; local x=hSP.X-w/2; local y=hSP.Y
 
@@ -331,8 +379,7 @@ RunService.RenderStepped:Connect(function()
             obj.dist.Text=d.." studs"; obj.dist.Color=Color3.fromRGB(180,180,180); obj.dist.Position=Vector2.new(hSP.X,y+h+2); obj.dist.Visible=true
         else obj.dist.Visible=false end
 
-        if _G.Tracers then
-            obj.tracer.From=botC; obj.tracer.To=Vector2.new(fSP.X,fSP.Y); obj.tracer.Color=color; obj.tracer.Visible=true
-        else obj.tracer.Visible=false end
+        -- No tracers (removed as requested)
+        obj.tracer.Visible=false
     end
 end)
